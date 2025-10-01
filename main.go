@@ -42,6 +42,7 @@ func main() {
 	// endpoints and handlers
 	router := httprouter.New()
 	router.POST("/api/v1/login", login)
+	router.POST("/api/v1/protected", protected)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", portInt),

@@ -3,7 +3,9 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"log"
+	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -24,4 +26,12 @@ func generateSessionToken(length int) string {
 		log.Fatalf("Failed to generate token: %v", err)
 	}
 	return base64.URLEncoding.EncodeToString(bytes)
+}
+
+func writeToJson(w http.ResponseWriter, data interface{}, statusCode int) error {
+	w.WriteHeader(statusCode)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		return err
+	}
+	return nil
 }
