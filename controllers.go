@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/julienschmidt/httprouter"
 )
 
-func login(w http.ResponseWriter, r *http.Request) {
+func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != http.MethodPost {
 		er := http.StatusMethodNotAllowed
 		http.Error(w, "Invalid Request Method", er)
@@ -32,8 +34,3 @@ func login(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Login successful!")
 
 }
-func getUser(w http.ResponseWriter, r *http.Request)    {}
-func getUsers(w http.ResponseWriter, r *http.Request)   {}
-func createUser(w http.ResponseWriter, r *http.Request) {}
-func updateUser(w http.ResponseWriter, r *http.Request) {}
-func deleteUser(w http.ResponseWriter, r *http.Request) {}

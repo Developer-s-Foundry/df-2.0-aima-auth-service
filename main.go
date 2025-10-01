@@ -10,7 +10,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
-	auth "github.com/stedankyi/df-2.0-aima-auth-service/handlers"
 )
 
 type Login struct {
@@ -42,7 +41,7 @@ func main() {
 
 	// endpoints and handlers
 	router := httprouter.New()
-	router.POST("/api/v1/login", auth.Login)
+	router.POST("/api/v1/login", login)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", portInt),
