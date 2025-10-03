@@ -7,6 +7,35 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+func register(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		er := http.StatusMethodNotAllowed
+		http.Error(w, "Invalid method", er)
+		return
+
+	}
+
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+	if len(username) < 8 || len(password) < 8 {
+		er := http.StatusNotAcceptable
+		http.Error(w, "Invalid username/password", er)
+		return
+	}
+
+	if _, ok := users[username]; ok {
+		er := http.StatusConflict
+		http.Error(w, "User already exists", er)
+		return
+	}
+	hashedPassword, _ := hashPassword(password)
+	users[username] = Login{
+		HashPassword: hashedPassword,
+	}
+
+	fmt.Fprintln(w, "User registered successfully!")
+}
+
 func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != http.MethodPost {
 		er := http.StatusMethodNotAllowed
