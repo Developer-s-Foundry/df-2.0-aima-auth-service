@@ -41,6 +41,7 @@ func main() {
 
 	// endpoints and handlers
 	router := httprouter.New()
+	router.POST("/api/v1/register", register)
 	router.POST("/api/v1/login", login)
 	router.POST("/api/v1/protected", protected)
 

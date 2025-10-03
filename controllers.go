@@ -7,7 +7,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-func register(w http.ResponseWriter, r *http.Request) {
+func register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != http.MethodPost {
 		er := http.StatusMethodNotAllowed
 		http.Error(w, "Invalid method", er)
