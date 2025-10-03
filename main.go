@@ -20,7 +20,7 @@ type Login struct {
 var users = map[string]Login{}
 
 func main() {
-	fmt.Println("Hello, Welcome to the Church Management System!")
+	fmt.Println("Hello, Welcome to AIMA AuthService!")
 
 	err := godotenv.Load()
 	if err != nil {
