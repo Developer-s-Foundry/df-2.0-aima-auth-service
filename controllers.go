@@ -59,5 +59,5 @@ func protected(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	username := r.FormValue("username")
 
-	fmt.Fprintln(w, "Login successful! Welcome %s", username)
+	fmt.Fprintf(w, "Login successful! Welcome %s", username)
 }
