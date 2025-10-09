@@ -7,7 +7,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-func register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != http.MethodPost {
 		er := http.StatusMethodNotAllowed
 		http.Error(w, "Invalid method", er)
@@ -22,13 +22,19 @@ func register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		http.Error(w, "Invalid username/password", er)
 		return
 	}
-	// we are to generate a uuid to store as part of the user
 
+	// we are to generate a uuid to store as part of the user
+	// check if user doesn't already exist
 	if _, ok := users[username]; ok {
 		er := http.StatusConflict
 		http.Error(w, "User already exists", er)
 		return
 	}
+
+	// commiting to database after checking if user doesn't already exist
+	// if err := post.Insert(user); err != nil {
+	// 	return fmt.Errorf("failed to insert task %s: %w", task.Name, err)
+	// }
 	hashedPassword, _ := hashPassword(password)
 	users[username] = Login{
 		HashPassword: hashedPassword,
@@ -37,7 +43,7 @@ func register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprintln(w, "User registered successfully!")
 }
 
-func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != http.MethodPost {
 		er := http.StatusMethodNotAllowed
 		http.Error(w, "Invalid Request Method", er)
@@ -75,7 +81,7 @@ func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprintln(w, "Login successful!")
 }
 
-func protected(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (h *AuthHandler) Protected(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != http.MethodPost {
 		er := http.StatusMethodNotAllowed
 		http.Error(w, "Invalid Request Method", er)

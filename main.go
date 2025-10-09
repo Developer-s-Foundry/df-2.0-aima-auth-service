@@ -8,9 +8,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/postgres"
 	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
 )
+
+type AuthHandler struct {
+	DB *postgres.PostgresConn
+}
 
 type Login struct {
 	HashPassword string
@@ -37,6 +42,12 @@ func main() {
 		log.Fatal("Invalid port parameter passed")
 	}
 
+	// database setup
+	url, user := os.Getenv("DB_URL"), os.Getenv("DB_USER")
+	host := os.Getenv("DB_HOST")
+	password, port := os.Getenv("DB_PASSWORD"), os.Getenv("DB_PORT")
+	db_name, db_ssl := os.Getenv("DB_NAME"), os.Getenv("DB_SSL")
+
 	fmt.Println("Port:", portString)
 
 	post, err := postgres.ConnectPostgres(url, password, port, host, db_name, user, db_ssl)
@@ -45,10 +56,11 @@ func main() {
 	}
 
 	// endpoints and handlers
+	auth := &AuthHandler{DB: post}
 	router := httprouter.New()
-	router.POST("/api/v1/register", register)
-	router.POST("/api/v1/login", login)
-	router.POST("/api/v1/protected", protected)
+	router.POST("/api/v1/register", auth.Register)
+	router.POST("/api/v1/login", auth.Login)
+	router.POST("/api/v1/protected", auth.Protected)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", portInt),
