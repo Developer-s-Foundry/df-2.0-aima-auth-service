@@ -22,6 +22,7 @@ func register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		http.Error(w, "Invalid username/password", er)
 		return
 	}
+	// we are to generate a uuid to store as part of the user
 
 	if _, ok := users[username]; ok {
 		er := http.StatusConflict
@@ -55,7 +56,8 @@ func login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 
 	// generate session token
-	sessionToken := generateSessionToken(32)
+	// retrieve userid from database pass as string to JWT func
+	sessionToken := generateJWToken(32)
 	user.SessionToken = sessionToken
 	users[username] = user
 

@@ -39,6 +39,11 @@ func main() {
 
 	fmt.Println("Port:", portString)
 
+	post, err := postgres.ConnectPostgres(url, password, port, host, db_name, user, db_ssl)
+	if err != nil {
+		panic(err)
+	}
+
 	// endpoints and handlers
 	router := httprouter.New()
 	router.POST("/api/v1/register", register)

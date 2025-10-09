@@ -1,14 +1,21 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var jwtSecret = []byte("i need to retieve this key from the environment")
+
+type CustomClaims struct {
+	UserID string `json:"user_id"`
+	jwt.RegisteredClaims
+}
 
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
@@ -20,12 +27,29 @@ func checkPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func generateSessionToken(length int) string {
-	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
-		log.Fatalf("Failed to generate token: %v", err)
+func generateJWToken(userID string) (string, error) {
+	expirationTime := time.Now().Add(24 * time.Hour)
+
+	// Create the claims
+	claims := CustomClaims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "aima-auth-service",
+			Subject:   userID,
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
 	}
-	return base64.URLEncoding.EncodeToString(bytes)
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtSecret)
+
+	if err != nil {
+		log.Printf("Failed to sign token: %v", err)
+		return "", err
+	}
+
+	return tokenString, nil
 }
 
 func writeToJson(w http.ResponseWriter, data interface{}, statusCode int) error {
