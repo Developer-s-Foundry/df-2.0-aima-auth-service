@@ -17,6 +17,16 @@ type AuthHandler struct {
 	DB *postgres.PostgresConn
 }
 
+// roles
+type RoleId string
+
+const (
+	RoleAnalyst       RoleId = "Analyst"
+	RoleManager       RoleId = "Manager"
+	RoleDeveloper     RoleId = "Developer"
+	RoleAdministrator RoleId = "Administrator"
+)
+
 func main() {
 	fmt.Println("Hello, Welcome to AIMA AuthService!")
 

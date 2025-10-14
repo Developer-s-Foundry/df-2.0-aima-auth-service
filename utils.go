@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -77,4 +78,19 @@ func writeToJson(w http.ResponseWriter, data interface{}, statusCode int) error 
 
 func generateUuid() string {
 	return uuid.NewString()
+}
+
+func validateRole(input string) (RoleId, bool) {
+
+	lowerInput := strings.ToLower(input)
+
+	var roleMap = map[string]RoleId{
+		"analyst":       RoleAnalyst,
+		"manager":       RoleManager,
+		"developer":     RoleDeveloper,
+		"administrator": RoleAdministrator,
+	}
+
+	roleId, ok := roleMap[lowerInput]
+	return roleId, ok
 }

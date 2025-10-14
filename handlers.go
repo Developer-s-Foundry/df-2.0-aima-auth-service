@@ -31,6 +31,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
+	// validate role
+	role := r.FormValue("role")
+	roleId, isValid := validateRole(role)
+
+	if !isValid {
+		http.Error(w, fmt.Sprintf("Invalid role supplied: %s", role), http.StatusBadRequest)
+		return
+	}
+
 	// check if user doesn't already exist
 	existingUser, err := h.DB.GetUser(r.Context(), email)
 	if existingUser != nil {
@@ -45,6 +54,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 	user := postgres.User{
 		UserID:         generateUuid(),
 		Email:          email,
+		RoleId:         string(roleId),
 		HashedPassword: hashedPassword,
 		CreatedAt:      time.Now(),
 	}
@@ -57,10 +67,12 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 	response := struct {
 		StatusCode int    `json:"status_code"`
 		UserId     string `json:"userId"`
+		RoleId     string `json:"roleId"`
 		Message    string `json:"message"`
 	}{
 		StatusCode: http.StatusCreated,
 		UserId:     user.UserID,
+		RoleId:     user.RoleId,
 		Message:    "User created successfully",
 	}
 	writeToJson(w, response, http.StatusCreated)
