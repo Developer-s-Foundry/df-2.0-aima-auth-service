@@ -49,7 +49,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 	}
 
 	if err := h.DB.InsertUser(user); err != nil {
-		fmt.Printf("failed to create user %s: %w", email, err)
+		fmt.Printf("failed to create user %s: %v", email, err)
 		writeToJson(w, "Failed to create user", http.StatusInternalServerError)
 	}
 
