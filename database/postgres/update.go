@@ -9,7 +9,7 @@ import (
 
 var ErrUsernameTaken = errors.New("username is already taken")
 
-func (p *PostgresConn) UpdateUsername(userID, newUsername string) error {
+func (p *PostgresConn) UpdateUsername(context context.Context, userID, newUsername string) error {
 	query := `
 		UPDATE users
 		SET
@@ -18,11 +18,8 @@ func (p *PostgresConn) UpdateUsername(userID, newUsername string) error {
 		WHERE user_id = $3
 	`
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	result, err := p.Conn.Exec(
-		ctx,
+		context,
 		query,
 		newUsername,
 		time.Now().UTC(),

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/postgres"
@@ -55,9 +56,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 
 	response := struct {
 		StatusCode int    `json:"status_code"`
+		UserId     string `json:"userId"`
 		Message    string `json:"message"`
 	}{
 		StatusCode: http.StatusCreated,
+		UserId:     user.UserID,
 		Message:    "User created successfully",
 	}
 	writeToJson(w, response, http.StatusCreated)
@@ -103,7 +106,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 	}
 
 	response := struct {
-		Token      string `json:"data"`
+		Token      string `json:"session_token"`
 		StatusCode int    `json:"status_code"`
 		Message    string `json:"message"`
 	}{
@@ -117,59 +120,60 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 
 }
 
-// func (h *AuthHandler) UpdateUsername(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-// 	claims, err := AuthorizeRequest(r)
-// 	if err != nil {
-// 		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
-// 		return
-// 	}
+func (h *AuthHandler) UpdateUsername(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	claims, err := AuthorizeRequest(r)
+	if err != nil {
+		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
 
-// 	newUsername := r.FormValue("new_username")
+	newUsername := r.FormValue("new_username")
 
-// 	if strings.TrimSpace(newUsername) == "" || len(newUsername) < 4 {
-// 		http.Error(w, "New username is required and must be at least 4 characters long", http.StatusBadRequest)
-// 		return
-// 	}
+	if strings.TrimSpace(newUsername) == "" || len(newUsername) < 4 {
+		http.Error(w, "New username is required and must be at least 4 characters long", http.StatusBadRequest)
+		return
+	}
 
-// 	email := claims.Email
+	user_id := claims.UserId
+	email := claims.Email
 
-// 	if err := h.DB.UpdateUsername(r.Context(), email, newUsername); err != nil {
-// 		if errors.Is(err, ErrUsernameTaken) {
-// 			http.Error(w, "This username is already taken.", http.StatusConflict)
-// 			return
-// 		}
+	if err := h.DB.UpdateUsername(r.Context(), user_id, newUsername); err != nil {
+		if errors.Is(err, ErrUsernameTaken) {
+			http.Error(w, "This username is already taken.", http.StatusConflict)
+			return
+		}
 
-// 		log.Printf("DB error updating username for user %s: %v", email, err)
-// 		http.Error(w, "Failed to update username due to a server error.", http.StatusInternalServerError)
-// 		return
-// 	}
+		log.Printf("DB error updating username for user %s: %v", email, err)
+		http.Error(w, "Failed to update username due to a server error.", http.StatusInternalServerError)
+		return
+	}
 
-// 	// Im soo wrong with this claims stuff... claims should have userId
-// 	newJwtData := map[string]interface{}{
-// 		"email":   newUsername,
-// 		"user_id": userID,
-// 		"role_id": claims.RoleId,
-// 	}
+	// fix this: claims should have userId and a roleId
+	newJwtData := map[string]interface{}{
+		"email":   newUsername,
+		"user_id": claims.UserId,
+		"role_id": claims.RoleId,
+	}
 
-// 	newToken, err := generateJWToken(newJwtData)
-// 	if err != nil {
-// 		log.Printf("Token generation error after username update: %v", err)
-// 		http.Error(w, "Username updated, but failed to generate new token.", http.StatusInternalServerError)
-// 		return
-// 	}
+	newToken, err := generateJWToken(newJwtData)
+	if err != nil {
+		log.Printf("Token generation error after username update: %v", err)
+		http.Error(w, "Username updated, but failed to generate new token.", http.StatusInternalServerError)
+		return
+	}
 
-// 	response := struct {
-// 		Token      string `json:"data"`
-// 		StatusCode int    `json:"status_code"`
-// 		Message    string `json:"message"`
-// 	}{
-// 		Token:      newToken,
-// 		StatusCode: http.StatusOK,
-// 		Message:    "Username updated successfully. Please use the new token for subsequent requests.",
-// 	}
+	response := struct {
+		Token      string `json:"data"`
+		StatusCode int    `json:"status_code"`
+		Message    string `json:"message"`
+	}{
+		Token:      newToken,
+		StatusCode: http.StatusOK,
+		Message:    "Username updated successfully. Please use the new token for subsequent requests.",
+	}
 
-// 	writeToJson(w, response, http.StatusOK)
-// }
+	writeToJson(w, response, http.StatusOK)
+}
 
 func (h *AuthHandler) Protected(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != http.MethodPost {

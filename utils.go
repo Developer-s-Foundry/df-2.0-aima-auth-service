@@ -14,7 +14,9 @@ import (
 )
 
 type CustomClaims struct {
-	Email string `json:"email"`
+	Email  string `json:"email"`
+	UserId string `json:"user_id"`
+	RoleId string `json:"role_id"`
 	jwt.RegisteredClaims
 }
 
@@ -29,16 +31,24 @@ func checkPasswordHash(password, hash string) bool {
 }
 
 func generateJWToken(data map[string]interface{}) (string, error) {
-	email, ok := data["email"].(string)
-	if !ok {
+	email, email_ok := data["email"].(string)
+	user_id, user_id_ok := data["user_id"].(string)
+	role_id, role_id_ok := data["role_id"].(string)
+	if !email_ok {
 		return "", errors.New("jwtData must contain a valid 'email' string")
+	} else if !user_id_ok {
+		return "", errors.New("jwtData must contain a valid 'user_id' string")
+	} else if !role_id_ok {
+		return "", errors.New("jwtData must contain a valid 'role_id' string")
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	jwtIssuer := os.Getenv("JWT_ISSUER")
 
 	claims := CustomClaims{
-		Email: email,
+		Email:  email,
+		UserId: user_id,
+		RoleId: role_id,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
