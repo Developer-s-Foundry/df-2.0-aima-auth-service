@@ -2,18 +2,19 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var jwtSecret = []byte("i need to retieve this key from the environment")
-
 type CustomClaims struct {
-	UserID string `json:"user_id"`
+	Email string `json:"email"`
 	jwt.RegisteredClaims
 }
 
@@ -27,28 +28,32 @@ func checkPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func generateJWToken(userID string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+func generateJWToken(data map[string]interface{}) (string, error) {
+	email, ok := data["email"].(string)
+	if !ok {
+		return "", errors.New("jwtData must contain a valid 'email' string")
+	}
 
-	// Create the claims
+	jwtSecret := os.Getenv("JWT_SECRET")
+	jwtIssuer := os.Getenv("JWT_ISSUER")
+
 	claims := CustomClaims{
-		UserID: userID,
+		Email: email,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    "aima-auth-service",
-			Subject:   userID,
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    jwtIssuer, // needs to be defined in env
+			Audience:  jwt.ClaimStrings{email},
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtSecret)
+	tokenString, err := token.SignedString(jwtSecret) // needs to be defined in env
 
 	if err != nil {
-		log.Printf("Failed to sign token: %v", err)
-		return "", err
+		log.Printf("Error signing JWT: %v", err)
+		return "", errors.New("error generating JWT")
 	}
-
 	return tokenString, nil
 }
 
@@ -58,4 +63,8 @@ func writeToJson(w http.ResponseWriter, data interface{}, statusCode int) error 
 		return err
 	}
 	return nil
+}
+
+func generateUuid() string {
+	return uuid.NewString()
 }

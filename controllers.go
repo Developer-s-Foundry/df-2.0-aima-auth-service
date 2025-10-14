@@ -1,11 +1,18 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
+	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/postgres"
 	"github.com/julienschmidt/httprouter"
 )
+
+var ErrUsernameTaken = errors.New("username already exists")
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != http.MethodPost {
@@ -15,32 +22,45 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 
 	}
 
-	username := r.FormValue("username")
+	email := r.FormValue("email")
 	password := r.FormValue("password")
-	if len(username) < 8 || len(password) < 8 {
+	if len(email) < 8 || len(password) < 8 {
 		er := http.StatusNotAcceptable
-		http.Error(w, "Invalid username/password", er)
+		http.Error(w, "Invalid email/password", er)
 		return
 	}
 
-	// we are to generate a uuid to store as part of the user
 	// check if user doesn't already exist
-	if _, ok := users[username]; ok {
-		er := http.StatusConflict
-		http.Error(w, "User already exists", er)
+	existingUser, err := h.DB.GetUser(r.Context(), email)
+	if existingUser != nil {
+		writeToJson(w, "User already exists", http.StatusConflict)
 		return
+	} else {
+		log.Printf("unable to get user from db: %v", err)
 	}
 
-	// commiting to database after checking if user doesn't already exist
-	// if err := post.Insert(user); err != nil {
-	// 	return fmt.Errorf("failed to insert task %s: %w", task.Name, err)
-	// }
+	// commit to database after checking if user doesn't already exist
 	hashedPassword, _ := hashPassword(password)
-	users[username] = Login{
-		HashPassword: hashedPassword,
+	user := postgres.User{
+		UserID:         generateUuid(),
+		Email:          email,
+		HashedPassword: hashedPassword,
+		CreatedAt:      time.Now(),
 	}
 
-	fmt.Fprintln(w, "User registered successfully!")
+	if err := h.DB.InsertUser(user); err != nil {
+		fmt.Printf("failed to create user %s: %w", email, err)
+		writeToJson(w, "Failed to create user", http.StatusInternalServerError)
+	}
+
+	response := struct {
+		StatusCode int    `json:"status_code"`
+		Message    string `json:"message"`
+	}{
+		StatusCode: http.StatusCreated,
+		Message:    "User created successfully",
+	}
+	writeToJson(w, response, http.StatusCreated)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -50,22 +70,37 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 		return
 	}
 
-	username := r.FormValue("username")
+	email := r.FormValue("email")
 	password := r.FormValue("password")
+	existingUser, err := h.DB.GetUser(r.Context(), email)
 
-	user, ok := users[username] // user in-memory database for users
-
-	if !ok || !checkPasswordHash(password, user.HashPassword) {
-		er := http.StatusUnauthorized
-		http.Error(w, "Invalid username or password", er)
+	if err != nil {
+		log.Printf("DB error for user %s: %v", email, err)
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "Invalid login credentials", http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, "An internal server error occurred", http.StatusInternalServerError)
 		return
 	}
 
-	// generate session token
-	// retrieve userid from database pass as string to JWT func
-	sessionToken := generateJWToken(32)
-	user.SessionToken = sessionToken
-	users[username] = user
+	if !checkPasswordHash(password, existingUser.HashedPassword) {
+		http.Error(w, "Invalid login credentials", http.StatusUnauthorized)
+		return
+	}
+
+	jwtData := map[string]interface{}{
+		"email":   email,
+		"user_id": existingUser.UserID,
+		"role_id": existingUser.RoleId,
+	}
+	sessionToken, err := generateJWToken(jwtData)
+
+	if err != nil {
+		log.Printf("Token generation error for user %s: %v", email, err)
+		http.Error(w, "Cannot generate token", http.StatusInternalServerError)
+		return
+	}
 
 	response := struct {
 		Token      string `json:"data"`
@@ -74,12 +109,67 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 	}{
 		Token:      sessionToken,
 		StatusCode: http.StatusOK,
-		Message:    "task updated successfully",
+		Message:    "Login successful",
 	}
 
 	writeToJson(w, response, http.StatusOK)
 	fmt.Fprintln(w, "Login successful!")
+
 }
+
+// func (h *AuthHandler) UpdateUsername(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// 	claims, err := AuthorizeRequest(r)
+// 	if err != nil {
+// 		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+// 		return
+// 	}
+
+// 	newUsername := r.FormValue("new_username")
+
+// 	if strings.TrimSpace(newUsername) == "" || len(newUsername) < 4 {
+// 		http.Error(w, "New username is required and must be at least 4 characters long", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	email := claims.Email
+
+// 	if err := h.DB.UpdateUsername(r.Context(), email, newUsername); err != nil {
+// 		if errors.Is(err, ErrUsernameTaken) {
+// 			http.Error(w, "This username is already taken.", http.StatusConflict)
+// 			return
+// 		}
+
+// 		log.Printf("DB error updating username for user %s: %v", email, err)
+// 		http.Error(w, "Failed to update username due to a server error.", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	// Im soo wrong with this claims stuff... claims should have userId
+// 	newJwtData := map[string]interface{}{
+// 		"email":   newUsername,
+// 		"user_id": userID,
+// 		"role_id": claims.RoleId,
+// 	}
+
+// 	newToken, err := generateJWToken(newJwtData)
+// 	if err != nil {
+// 		log.Printf("Token generation error after username update: %v", err)
+// 		http.Error(w, "Username updated, but failed to generate new token.", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	response := struct {
+// 		Token      string `json:"data"`
+// 		StatusCode int    `json:"status_code"`
+// 		Message    string `json:"message"`
+// 	}{
+// 		Token:      newToken,
+// 		StatusCode: http.StatusOK,
+// 		Message:    "Username updated successfully. Please use the new token for subsequent requests.",
+// 	}
+
+// 	writeToJson(w, response, http.StatusOK)
+// }
 
 func (h *AuthHandler) Protected(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != http.MethodPost {
@@ -88,13 +178,13 @@ func (h *AuthHandler) Protected(w http.ResponseWriter, r *http.Request, _ httpro
 		return
 	}
 
-	if err := Authorize(r); err != nil {
+	claims, err := AuthorizeRequest(r)
+
+	if err != nil {
 		er := http.StatusUnauthorized
 		http.Error(w, "Unauthorised", er)
 		return
 	}
 
-	username := r.FormValue("username")
-
-	fmt.Fprintf(w, "Login successful! Welcome %s", username)
+	fmt.Fprintf(w, "Login successful! Welcome user %s ", claims.Email)
 }

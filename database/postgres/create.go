@@ -5,33 +5,28 @@ import (
 	"time"
 )
 
-type Task struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Status      string    `json:"status"`
-	Description string    `json:"description,omitempty"`
-	AssignedTo  string    `json:"assigned_to,omitempty"`
-	ExpiresAt   time.Time `json:"expires_at,omitempty"`
-	CreatedAt   time.Time `json:"created_at,omitempty"`
-	UpdatedAt   time.Time `json:"updated_at,omitempty"`
-}
-
-type Login struct {
-	HashPassword string
-	SessionToken string
+type User struct {
+	UserID         string    `json:"userId"`
+	UserName       string    `json:"username"`
+	Email          string    `json:"email"`
+	HashedPassword string    `json:"hashedPassword"`
+	RoleId         string    `json:"roleId"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at,omitempty"`
+	DeletedAt      time.Time `json:"deleted_at,omitempty"`
 }
 
 func (p *PostgresConn) Create() error {
 	query := `
 		CREATE TABLE IF NOT EXISTS tasks (
-			id TEXT PRIMARY KEY,
-			name VARCHAR(100) NOT NULL,
-			status VARCHAR(100) NOT NULL DEFAULT 'pending',
-			description TEXT NOT NULL,
-			assigned_to VARCHAR(100),
-			expires_at TIMESTAMPTZ,
-			created_at TIMESTAMPTZ DEFAULT NOW(),
-			updated_at TIMESTAMPTZ DEFAULT NOW()
+			userId TEXT PRIMARY KEY,
+			username VARCHAR(100) NOT NULL,
+			email VARCHAR(100) NOT NULL,
+			hashedPassword TEXT NOT NULL,
+			roleId VARCHAR(100),
+			created_at TIMESTAMPTZ NOT NULL,
+			updated_at TIMESTAMPTZ DEFAULT NOW(),
+			deleted_at TIMESTAMPTZ
 	)	
 	`
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -17,13 +17,6 @@ type AuthHandler struct {
 	DB *postgres.PostgresConn
 }
 
-type Login struct {
-	HashPassword string
-	SessionToken string
-}
-
-var users = map[string]Login{}
-
 func main() {
 	fmt.Println("Hello, Welcome to AIMA AuthService!")
 
