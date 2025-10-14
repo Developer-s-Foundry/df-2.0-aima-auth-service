@@ -54,6 +54,7 @@ func main() {
 	router.POST("/api/v1/register", auth.Register)
 	router.POST("/api/v1/login", auth.Login)
 	router.POST("/api/v1/protected", auth.Protected)
+	router.POST("/api/v1/update", auth.UpdateUsername)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", portInt),
