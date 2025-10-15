@@ -19,6 +19,7 @@ type AuthHandler struct {
 }
 
 var jwtRSAPrivateKey *rsa.PrivateKey
+var jwtRSAPublicKey *rsa.PublicKey
 
 // roles
 type RoleId string
@@ -62,9 +63,9 @@ func main() {
 	}
 
 	// get key for jwt signing
-	err = initRSAKey("jwt_private.key")
+	err = initRSAKeys("jwt_private.key", "jwt_public.key")
 	if err != nil {
-		log.Fatal("failed to initialise private key")
+		log.Fatal("failed to initialise keys")
 	}
 
 	// endpoints and handlers

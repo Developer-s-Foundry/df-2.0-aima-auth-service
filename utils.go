@@ -95,19 +95,29 @@ func validateRole(input string) (RoleId, bool) {
 	return roleId, ok
 }
 
-func initRSAKey(privateKeyPath string) error {
+func initRSAKeys(privateKeyPath, publicKeyPath string) error {
 	keyData, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		return fmt.Errorf("could not read private key file: %w", err)
 	}
 
 	// parse the private key
-	parsedKey, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
+	jwtRSAPrivateKey, err = jwt.ParseRSAPrivateKeyFromPEM(keyData)
 	if err != nil {
 		return fmt.Errorf("could not parse private key: %w", err)
 	}
 
-	jwtRSAPrivateKey = parsedKey
+	// paes public key
+	publicKeyData, err := os.ReadFile(publicKeyPath)
+	if err != nil {
+		return fmt.Errorf("could not read public key file: %w", err)
+	}
+
+	jwtRSAPublicKey, err = jwt.ParseRSAPublicKeyFromPEM(publicKeyData)
+	if err != nil {
+		return fmt.Errorf("could not parse public key: %w", err)
+	}
+
 	log.Println("RSA Private Key loaded successfully.")
 	return nil
 }

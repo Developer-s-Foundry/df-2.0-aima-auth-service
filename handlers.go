@@ -125,7 +125,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 	}{
 		Token:      sessionToken,
 		StatusCode: http.StatusOK,
-		Message:    "Login successful",
+		Message:    "Login successful! Welcome to AIMAS",
 	}
 
 	writeToJson(w, response, http.StatusOK)
@@ -203,5 +203,5 @@ func (h *AuthHandler) Protected(w http.ResponseWriter, r *http.Request, _ httpro
 		return
 	}
 
-	fmt.Fprintf(w, "Login successful! Welcome user %s ", claims.Email)
+	fmt.Fprintf(w, "Authorisation successful! Welcome user %s ", claims.Email)
 }
