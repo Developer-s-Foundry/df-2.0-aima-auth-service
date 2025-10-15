@@ -1,11 +1,11 @@
 # only dummy values should be added here and not real configuration keys
 PORT=8080
-DB_URL=postgres://admin:secret@localhost:5432/mydb
+DB_URL=postgres://admin:secret@localhost:5432/authdb
 DB_HOST="localhost"
 DB_USER="admin"
 DB_PASSWORD="secret"
 DB_PORT="5432"
-DB_NAME="mydb"
+DB_NAME="authdb"
 DB_SSL="disabled"
-JWT_SECRET="xxxx-xxxx-xxxx-xxxx"
+JWT_KEY_PATH="path/to/key/jwt_private.key"
 JWT_ISSUER="df-aima-auth-server"

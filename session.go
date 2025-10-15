@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -28,12 +27,11 @@ func AuthorizeRequest(r *http.Request) (*CustomClaims, error) {
 	claims := &CustomClaims{}
 
 	// validate the JWT here
-	jwtSecret := os.Getenv("JWT_SECRET")
 	token, err := jwt.ParseWithClaims(sessionToken, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return jwtSecret, nil
+		return jwtRSAPrivateKey, nil
 	})
 
 	if err != nil {

@@ -13,7 +13,7 @@ func (p *PostgresConn) UpdateUsername(context context.Context, userID, newUserna
 	query := `
 		UPDATE users
 		SET
-			email      = $1,
+			username   = $1,
 			updated_at = $2
 		WHERE user_id = $3
 	`

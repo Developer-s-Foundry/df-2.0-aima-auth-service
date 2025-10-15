@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,6 +17,8 @@ import (
 type AuthHandler struct {
 	DB *postgres.PostgresConn
 }
+
+var jwtRSAPrivateKey *rsa.PrivateKey
 
 // roles
 type RoleId string
@@ -56,6 +59,12 @@ func main() {
 	post, err := postgres.ConnectPostgres(url, password, port, host, db_name, user, db_ssl)
 	if err != nil {
 		panic(err)
+	}
+
+	// get key for jwt signing
+	err = initRSAKey("jwt_private.key")
+	if err != nil {
+		log.Fatal("failed to initialise private key")
 	}
 
 	// endpoints and handlers

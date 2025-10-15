@@ -1,13 +1,13 @@
 .SILENT:
 
-POSTGRES_CONTAINER=my_postgres
+POSTGRES_CONTAINER=auth_postgres
 POSTGRES_USER=admin
 POSTGRES_PASSWORD=secret
-POSTGRES_DB=mydb
+POSTGRES_DB=authdb
 POSTGRES_PORT=5432
 POSTGRES_IMAGE=postgres:15
 
-BINARY_NAME=authservice.exe
+BINARY_NAME=authservice
 
 .PHONY: postgres start stop logs psql redis-cli remove build run clean
 

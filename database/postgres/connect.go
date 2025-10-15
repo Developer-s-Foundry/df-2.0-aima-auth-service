@@ -53,6 +53,6 @@ func ConnectPostgres(uri, password, port, host, database, user, sslmode string) 
 		return nil, err
 	}
 
-	log.Println("task table create successfully")
+	log.Println("user table create successfully")
 	return conn, nil
 }

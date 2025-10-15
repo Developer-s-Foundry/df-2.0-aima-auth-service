@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -43,7 +44,6 @@ func generateJWToken(data map[string]interface{}) (string, error) {
 		return "", errors.New("jwtData must contain a valid 'role_id' string")
 	}
 
-	jwtSecret := os.Getenv("JWT_SECRET")
 	jwtIssuer := os.Getenv("JWT_ISSUER")
 
 	claims := CustomClaims{
@@ -58,8 +58,8 @@ func generateJWToken(data map[string]interface{}) (string, error) {
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtSecret) // needs to be defined in env
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tokenString, err := token.SignedString(jwtRSAPrivateKey)
 
 	if err != nil {
 		log.Printf("Error signing JWT: %v", err)
@@ -93,4 +93,21 @@ func validateRole(input string) (RoleId, bool) {
 
 	roleId, ok := roleMap[lowerInput]
 	return roleId, ok
+}
+
+func initRSAKey(privateKeyPath string) error {
+	keyData, err := os.ReadFile(privateKeyPath)
+	if err != nil {
+		return fmt.Errorf("could not read private key file: %w", err)
+	}
+
+	// parse the private key
+	parsedKey, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
+	if err != nil {
+		return fmt.Errorf("could not parse private key: %w", err)
+	}
+
+	jwtRSAPrivateKey = parsedKey
+	log.Println("RSA Private Key loaded successfully.")
+	return nil
 }

@@ -18,7 +18,7 @@ type User struct {
 
 func (p *PostgresConn) Create() error {
 	query := `
-		CREATE TABLE IF NOT EXISTS tasks (
+		CREATE TABLE IF NOT EXISTS users (
 			userId TEXT PRIMARY KEY,
 			username VARCHAR(100) NOT NULL,
 			email VARCHAR(100) NOT NULL,
