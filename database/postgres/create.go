@@ -20,7 +20,7 @@ func (p *PostgresConn) Create() error {
 	query := `
 		CREATE TABLE IF NOT EXISTS users (
 			userId TEXT PRIMARY KEY,
-			username VARCHAR(100) NOT NULL,
+			username VARCHAR(100),
 			email VARCHAR(100) NOT NULL,
 			hashedPassword TEXT NOT NULL,
 			roleId VARCHAR(100),
