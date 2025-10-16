@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/postgres"
 	"github.com/julienschmidt/httprouter"
@@ -16,32 +15,17 @@ import (
 var ErrUsernameTaken = errors.New("username already exists")
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	if r.Method != http.MethodPost {
-		er := http.StatusMethodNotAllowed
-		http.Error(w, "Invalid method", er)
-		return
 
+	var user struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
-	email := r.FormValue("email")
-	password := r.FormValue("password")
-	if len(email) < 8 || len(password) < 8 {
-		er := http.StatusNotAcceptable
-		http.Error(w, "Invalid email/password", er)
+	if err := readFromJson(r, &user); err != nil {
+		writeToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-
-	// validate role
-	role := r.FormValue("role")
-	roleId, isValid := validateRole(role)
-
-	if !isValid {
-		http.Error(w, fmt.Sprintf("Invalid role supplied: %s", role), http.StatusBadRequest)
-		return
-	}
-
-	// check if user doesn't already exist
-	existingUser, err := h.DB.GetUser(r.Context(), email)
+	existingUser, err := h.DB.GetUser(r.Context(), user.Email)
 	if existingUser != nil {
 		writeToJson(w, "User already exists", http.StatusConflict)
 		return
@@ -50,48 +34,52 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 	}
 
 	// commit to database after checking if user doesn't already exist
-	hashedPassword, _ := hashPassword(password)
-	user := postgres.User{
+	hashedPassword, _ := hashPassword(user.Password)
+	usr := postgres.User{
 		UserID:         generateUuid(),
-		Email:          email,
-		RoleId:         string(roleId),
+		Email:          user.Email,
 		HashedPassword: hashedPassword,
-		CreatedAt:      time.Now(),
 	}
 
-	if err := h.DB.InsertUser(user); err != nil {
-		fmt.Printf("failed to create user %s: %v", email, err)
+	if err := h.DB.InsertUser(usr); err != nil {
+		fmt.Printf("failed to create user %s: %v", usr.Email, err)
 		writeToJson(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
 
+
+	
+	token := generateJWToken()
+
 	response := struct {
-		StatusCode int    `json:"status_code"`
 		UserId     string `json:"userId"`
-		RoleId     string `json:"roleId"`
+		Email      string `json:"email"`
 		Message    string `json:"message"`
+		StatusCode int    `json:"status_code"`
 	}{
+
 		StatusCode: http.StatusCreated,
-		UserId:     user.UserID,
-		RoleId:     user.RoleId,
+		UserId:     usr.UserID,
+		Email:      usr.Email,
 		Message:    "User created successfully",
 	}
 	writeToJson(w, response, http.StatusCreated)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	if r.Method != http.MethodPost {
-		er := http.StatusMethodNotAllowed
-		http.Error(w, "Invalid Request Method", er)
-		return
+	var authUser struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
-	email := r.FormValue("email")
-	password := r.FormValue("password")
-	existingUser, err := h.DB.GetUser(r.Context(), email)
+	if err := readFromJson(r, &authUser); err != nil {
+		writeToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	existingUser, err := h.DB.GetUser(r.Context(), authUser.Email)
 
 	if err != nil {
-		log.Printf("DB error for user %s: %v", email, err)
+		log.Printf("DB error for user %s: %v", authUser.Email, err)
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "Invalid login credentials", http.StatusUnauthorized)
 			return
@@ -100,37 +88,37 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 		return
 	}
 
-	if !checkPasswordHash(password, existingUser.HashedPassword) {
+	if !checkPasswordHash(authUser.Password, existingUser.HashedPassword) {
 		http.Error(w, "Invalid login credentials", http.StatusUnauthorized)
 		return
 	}
 
 	jwtData := map[string]interface{}{
-		"email":   email,
 		"user_id": existingUser.UserID,
-		"role_id": existingUser.RoleId,
 	}
 	sessionToken, err := generateJWToken(jwtData)
 
 	if err != nil {
-		log.Printf("Token generation error for user %s: %v", email, err)
+		log.Printf("Token generation error for user %s: %v", authUser.Email, err)
 		http.Error(w, "Cannot generate token", http.StatusInternalServerError)
 		return
 	}
 
 	response := struct {
+		ID         string `json:"id"`
+		Email      string `json:"email"`
 		Token      string `json:"session_token"`
 		StatusCode int    `json:"status_code"`
 		Message    string `json:"message"`
 	}{
+		ID:         existingUser.UserID,
+		Email:      existingUser.Email,
 		Token:      sessionToken,
 		StatusCode: http.StatusOK,
 		Message:    "Login successful! Welcome to AIMAS",
 	}
 
 	writeToJson(w, response, http.StatusOK)
-	fmt.Fprintln(w, "Login successful!")
-
 }
 
 func (h *AuthHandler) UpdateUsername(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -148,7 +136,6 @@ func (h *AuthHandler) UpdateUsername(w http.ResponseWriter, r *http.Request, _ h
 	}
 
 	user_id := claims.UserId
-	email := claims.Email
 
 	if err := h.DB.UpdateUsername(r.Context(), user_id, newUsername); err != nil {
 		if errors.Is(err, ErrUsernameTaken) {

@@ -23,7 +23,7 @@ func (p *PostgresConn) UpdateUsername(context context.Context, userID, newUserna
 		query,
 		newUsername,
 		time.Now().UTC(),
-		userID, // we are usign userId for updates
+		userID,
 	)
 
 	if err != nil {
