@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	WelcomeEmail      = "auth_welcome_mail"
-	AuthUser          = "auth_user_info"
-	WelcomeEmailQueue = "queue"
+	NotifyUserSuccessfulSignUp = "auth_welcome_mail"
+	AuthUser                   = "auth_user_info"
+	WelcomeEmailQueue          = "queue"
 )
 
 type Consumer struct {

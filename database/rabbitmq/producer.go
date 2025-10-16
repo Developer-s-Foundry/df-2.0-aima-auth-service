@@ -50,3 +50,11 @@ func (p *RabbitMQ) Publish(exchange, routingKey string, data interface{}) error 
 
 	return fmt.Errorf("failed to publish message after retries: %w", err)
 }
+
+func (p *RabbitMQ) PublishNotification(data interface{}) error {
+	return p.Publish("notification_exchange", "notification.queue", data)
+}
+
+func (p *RabbitMQ) PublishUserManagement(data interface{}) error {
+	return p.Publish("user_exchange", "user.queue", data)
+}

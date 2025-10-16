@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/postgres"
+	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/rabbitmq"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -54,6 +55,18 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
+	userData := map[string]string{
+		"type":  rabbitmq.NotifyUserSuccessfulSignUp,
+		"email": usr.Email,
+		"Id":    usr.UserID,
+	}
+
+	// publish to user notification
+	go h.RabbMQ.PublishNotification(userData)
+
+	userData["type"] = rabbitmq.AuthUser
+	go h.RabbMQ.PublishUserManagement(userData)
+
 	response := struct {
 		UserId     string `json:"userId"`
 		Email      string `json:"email"`
@@ -86,7 +99,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 	if err != nil {
 		log.Printf("DB error for user %s: %v", authUser.Email, err)
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "Invalid login credentials", http.StatusUnauthorized)
+			respErr := map[string]string{
+				"error":  "email or password does not exists",
+				"status": http.StatusText(http.StatusBadRequest),
+			}
+			writeToJson(w, respErr, http.StatusBadRequest)
 			return
 		}
 		http.Error(w, "An internal server error occurred", http.StatusInternalServerError)
