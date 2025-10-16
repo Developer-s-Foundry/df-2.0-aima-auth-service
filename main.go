@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,21 +9,21 @@ import (
 	"time"
 
 	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/postgres"
+	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/rabbitmq"
 	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
 )
 
 type AuthHandler struct {
-	DB *postgres.PostgresConn
+	DB     *postgres.PostgresConn
+	RabbMQ *rabbitmq.RabbitMQ
 }
-
-var jwtRSAPrivateKey *rsa.PrivateKey
-var jwtRSAPublicKey *rsa.PublicKey
 
 func main() {
 	godotenv.Load()
 
 	portString := os.Getenv("PORT")
+	rConnStr := os.Getenv("RABBITMQ_URL")
 	if portString == "" {
 		log.Fatal("PORT is not found in the environment file!")
 	}
@@ -47,8 +46,12 @@ func main() {
 		panic(err)
 	}
 
-	// endpoints and handlers
-	auth := &AuthHandler{DB: post}
+	rabbit := rabbitmq.NewRabbitMQ(rConnStr)
+
+	go rabbit.Connect()
+	<-rabbit.NotifyReady()
+
+	auth := &AuthHandler{DB: post, RabbMQ: rabbit}
 	router := httprouter.New()
 	router.POST("/auth/register", auth.Register)
 	router.POST("/auth/login", auth.Login)

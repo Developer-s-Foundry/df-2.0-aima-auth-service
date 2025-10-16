@@ -57,6 +57,30 @@ func generateJWToken(userID string) (string, error) {
 	return tokenString, nil
 }
 
+func VerifyJWToken(tokenString string) (*CustomClaims, error) {
+	secretKey := os.Getenv("JWT_SECRET")
+	if secretKey == "" {
+		return nil, errors.New("missing JWT_SECRET environment variable")
+	}
+
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(secretKey), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.New("invalid token")
+}
+
 func writeToJson(w http.ResponseWriter, data interface{}, statusCode int) error {
 	w.WriteHeader(statusCode)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
