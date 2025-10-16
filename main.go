@@ -21,23 +21,8 @@ type AuthHandler struct {
 var jwtRSAPrivateKey *rsa.PrivateKey
 var jwtRSAPublicKey *rsa.PublicKey
 
-// roles
-type RoleId string
-
-const (
-	RoleAnalyst       RoleId = "Analyst"
-	RoleManager       RoleId = "Manager"
-	RoleDeveloper     RoleId = "Developer"
-	RoleAdministrator RoleId = "Administrator"
-)
-
 func main() {
-	fmt.Println("Hello, Welcome to AIMA AuthService!")
-
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal(err)
-	}
+	godotenv.Load()
 
 	portString := os.Getenv("PORT")
 	if portString == "" {
@@ -62,19 +47,11 @@ func main() {
 		panic(err)
 	}
 
-	// get key for jwt signing
-	err = initRSAKeys("jwt_private.key", "jwt_public.key")
-	if err != nil {
-		log.Fatal("failed to initialise keys")
-	}
-
 	// endpoints and handlers
 	auth := &AuthHandler{DB: post}
 	router := httprouter.New()
-	router.POST("/api/v1/register", auth.Register)
-	router.POST("/api/v1/login", auth.Login)
-	router.POST("/api/v1/protected", auth.Protected)
-	router.POST("/api/v1/update", auth.UpdateUsername)
+	router.POST("/auth/register", auth.Register)
+	router.POST("/auth/login", auth.Login)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", portInt),
