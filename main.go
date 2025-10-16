@@ -1,80 +1,83 @@
 package main
 
 import (
-	"crypto/rsa"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/postgres"
+	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/rabbitmq"
 	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
 )
 
 type AuthHandler struct {
-	DB *postgres.PostgresConn
+	DB     *postgres.PostgresConn
+	RabbMQ *rabbitmq.RabbitMQ
 }
 
-var jwtRSAPrivateKey *rsa.PrivateKey
-var jwtRSAPublicKey *rsa.PublicKey
-
-// roles
-type RoleId string
-
-const (
-	RoleAnalyst       RoleId = "Analyst"
-	RoleManager       RoleId = "Manager"
-	RoleDeveloper     RoleId = "Developer"
-	RoleAdministrator RoleId = "Administrator"
-)
-
 func main() {
-	fmt.Println("Hello, Welcome to AIMA AuthService!")
-
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal(err)
-	}
+	_ = godotenv.Load()
 
 	portString := os.Getenv("PORT")
+	rConnStr := os.Getenv("RABBITMQ_URL")
 	if portString == "" {
-		log.Fatal("PORT is not found in the environment file!")
+		log.Fatal("PORT not found in environment variables!")
 	}
 
 	portInt, err := strconv.Atoi(portString)
 	if err != nil {
-		log.Fatal("Invalid port parameter passed")
+		log.Fatal("Invalid PORT parameter")
 	}
 
-	// database setup
 	url, user := os.Getenv("DB_URL"), os.Getenv("DB_USER")
 	host := os.Getenv("DB_HOST")
 	password, port := os.Getenv("DB_PASSWORD"), os.Getenv("DB_PORT")
-	db_name, db_ssl := os.Getenv("DB_NAME"), os.Getenv("DB_SSL")
+	dbName, dbSSL := os.Getenv("DB_NAME"), os.Getenv("DB_SSL")
 
 	fmt.Println("Port:", portString)
 
-	post, err := postgres.ConnectPostgres(url, password, port, host, db_name, user, db_ssl)
+	post, err := postgres.ConnectPostgres(url, password, port, host, dbName, user, dbSSL)
 	if err != nil {
 		panic(err)
 	}
 
-	// get key for jwt signing
-	err = initRSAKeys("jwt_private.key", "jwt_public.key")
-	if err != nil {
-		log.Fatal("failed to initialise keys")
-	}
+	rabbit := rabbitmq.NewRabbitMQ(rConnStr)
 
-	// endpoints and handlers
-	auth := &AuthHandler{DB: post}
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(context.Background())
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := rabbit.Connect(); err != nil {
+			log.Printf("[RabbitMQ] Connection error: %v", err)
+		}
+	}()
+
+	// Wait for RabbitMQ to be ready
+	<-rabbit.NotifyReady()
+
+	// Start consumer
+	consumeEmail := rabbitmq.NewConsumer(rabbit, "notification_email_queue", "email-worker", handleEmailDeliveryAck)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		consumeEmail.Start(ctx)
+	}()
+
+	auth := &AuthHandler{DB: post, RabbMQ: rabbit}
 	router := httprouter.New()
-	router.POST("/api/v1/register", auth.Register)
-	router.POST("/api/v1/login", auth.Login)
-	router.POST("/api/v1/protected", auth.Protected)
-	router.POST("/api/v1/update", auth.UpdateUsername)
+	router.POST("/auth/register", auth.Register)
+	router.POST("/auth/login", auth.Login)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", portInt),
@@ -82,6 +85,34 @@ func main() {
 		WriteTimeout: time.Minute * 30,
 		Handler:      router,
 	}
-	log.Printf("Server is running on %s\n", server.Addr)
-	log.Fatal(server.ListenAndServe())
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Printf("Server is running on %s\n", server.Addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("HTTP server error: %v", err)
+		}
+	}()
+
+	<-stop
+	log.Println("[Main] Shutdown signal received")
+
+	cancel()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("[Main] Server shutdown error: %v", err)
+	} else {
+		log.Println("[Main] HTTP server shut down gracefully")
+	}
+
+	rabbit.Close()
+
+	wg.Wait()
+	log.Println("[Main] All goroutines exited cleanly")
 }
