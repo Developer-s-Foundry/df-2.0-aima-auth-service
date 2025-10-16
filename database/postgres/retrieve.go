@@ -8,7 +8,7 @@ import (
 
 func (p *PostgresConn) GetUser(context context.Context, email string) (*User, error) {
 	query := `
-		SELECT userId, username, email, hashedPassword, created_at, updated_at
+		SELECT userId, email, hashedPassword, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
