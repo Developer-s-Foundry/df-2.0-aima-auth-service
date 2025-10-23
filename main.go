@@ -73,7 +73,7 @@ func main() {
 	auth := &AuthHandler{DB: post, RabbMQ: rabbit}
 	router := httprouter.New()
 	router.POST("/register", VerifyGatewayRequest(auth.Register))
-	router.POST("/login", VerifyGatewayRequest(auth.Register))
+	router.POST("/login", VerifyGatewayRequest(auth.Login))
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", portInt),
