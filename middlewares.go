@@ -26,7 +26,7 @@ func VerifyGatewayRequest(next httprouter.Handle) httprouter.Handle {
 		serviceName := r.Header.Get("X-Service-Name") // must be included in signing request
 
 		if timestamp == "" || signature == "" {
-			writeJSONError(w, http.StatusUnauthorized, "missing required gateway headers")
+			writeJSONError(w, http.StatusUnauthorized, "request not coming from gateway")
 			return
 		}
 
