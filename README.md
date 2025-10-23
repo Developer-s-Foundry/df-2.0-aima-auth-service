@@ -2,6 +2,9 @@
 
 The **AIMA Auth Service** is a Go-based microservice designed to handle user registration and login functionality, integrating with **PostgreSQL** for database operations and **RabbitMQ** for asynchronous tasks, such as email notifications.
 
+To access a deployed version of this app on Render, visit: [here](https://df-2-0-aima-auth-service.onrender.com)
+To access the app through the API Gateway of the aimas project, use: [here](https://unlikely-cathrin-ubermensch-c0536783.koyeb.app/auth)
+
 -----
 
 ## 🚀 Getting Started
@@ -52,8 +55,8 @@ The service uses `julienschmidt/httprouter` and provides the following routes:
 
 | Method | Path | Description |
 | :--- | :--- | :--- |
-| `POST` | `/auth/register` | Handles new user registration. |
-| `POST` | `/auth/login` | Handles user authentication and login. |
+| `POST` | `/register` | Handles new user registration. |
+| `POST` | `/login` | Handles user authentication and login. |
 
 -----
 
@@ -67,7 +70,7 @@ The service uses `julienschmidt/httprouter` and provides the following routes:
 ## API Example Responses
 
 These examples illustrate the expected JSON structures returned by the AIMA Auth Service for successful and failure cases on the /auth/register and /auth/login endpoints.
-1. **POST /auth/register Request Body**
+1. **POST /register Request Body**
 
 ```json
 {
@@ -91,7 +94,7 @@ A new user is created in the PostgreSQL database, and a JWT session token is ret
 Failure Response: User Exists (Status: 409 Conflict)
 "User already exists"
 
-2. **POST /auth/login Request Body**
+2. **POST /login Request Body**
 
 ```json
 {
@@ -128,3 +131,100 @@ If the email exists but the password is wrong.
 Invalid login credentials
 
 (Note: This is returned as a plain text string by http.Error in the handler.)
+
+# RabbitMQ Message Publishing Documentation
+
+This documentation describes how the authentication service publishes messages to RabbitMQ, detailing which exchanges and queues are used and what other services can consume these messages.
+
+---
+
+## Overview
+
+The system uses RabbitMQ as a communication layer between microservices.  
+Messages are published to specific exchanges with defined routing keys so that subscribed services can consume them based on their responsibilities.
+
+There are currently *two main exchanges*:
+
+- **notification_exchange** — handles all notification-related events such as sending emails or alerts.
+- **user_exchange** — handles events related to user data synchronization and management.
+
+---
+
+## Published Messages
+
+### 1. Notification Exchange
+
+Messages sent to this exchange are consumed by the *Notification Service*.  
+They are routed through the **notification.queue**.
+
+- *Exchange Name:* notification_exchange  
+- *Routing Key / Queue:* notification.queue  
+- *Purpose:* To deliver notification-related messages such as welcome emails.
+
+Example message type published to this exchange:
+
+- **auth_welcome_mail** — triggers a welcome email to new users after registration.
+
+---
+
+### 2. User Management Exchange
+
+Messages sent to this exchange are consumed by the *User Management Service*.  
+They are routed through the **user.queue**.
+
+- *Exchange Name:* user_exchange  
+- *Routing Key / Queue:* user.queue  
+- *Purpose:* To synchronize or update user information across services.
+
+Example message type published to this exchange:
+
+- **auth_user_info** — used to send user details for synchronization between services.
+
+---
+
+## Message Structure
+
+Each published message contains data in a key-value format, allowing consumers to easily identify and process events.
+
+Typical message payload structure:
+
+| Field | Description |
+|--------|-------------|
+| type | The event type that describes the purpose of the message (e.g., auth_welcome_mail). |
+| email | The user’s email address associated with the event. |
+| Id | The unique identifier of the user in the system. |
+
+Example:
+text
+type: auth_welcome_mail  
+email: user@example.com  
+Id: 12345
+
+
+---
+
+## Event Constants
+
+| Constant | Value | Description |
+|-----------|--------|-------------|
+| NotifyUserSuccessfulSignUp | auth_welcome_mail | Sent when a user successfully signs up. Triggers a welcome email notification. |
+| AuthUser | auth_user_info | Used to share or update user information between services. |
+| WelcomeEmailQueue | queue | Represents the bound queue name for welcome emails. |
+
+---
+
+## Consumption Guidelines
+
+- The *Notification Service* should listen on the notification.queue queue bound to the notification_exchange exchange.
+- The *User Management Service* should listen on the user.queue queue bound to the user_exchange exchange.
+- Each consumer should inspect the type field of the message to determine the action to perform.
+- Messages are JSON-encoded for consistent parsing across services.
+
+---
+
+## Summary Table
+
+| Event Type | Exchange | Queue | Consuming Service | Purpose |
+|-------------|-----------|--------|------------------|----------|
+| auth_welcome_mail | notification_exchange | notification.queue | Notification Service | Sends a welcome email to new users. |
+| auth_user_info | user_exchange | user.queue | User Management Service | Synchronizes user data across services. |
