@@ -1,12 +1,14 @@
 # only dummy values should be added here and not real configuration keys
-PORT=8080
-DB_URL=postgres://movy_user:movy_password@localhost:5432/movy_db?sslmode=disable
+PORT=8000
+DB_URL=postgres://auth_user:auth_pass@localhost:5432/auth_db?sslmode=disable
 DB_HOST="localhost"
 DB_USER="admin"
 DB_PASSWORD="secret"
 DB_PORT="5432"
 DB_NAME="authdb"
 DB_SSL="disabled"
-JWT_SECRET="laMJSCjA/F9Pk323I2ZPyTffqbVTc9Azj/GiTEtrKyhQKb87ktPamwOA7D2sw57doSth27AQx7+UEH7WOndlpg=="
+GATEWAY_SECRET_KEY="****" #request for token key don't set your self
+JWT_SECRET="****" #request for token key while in production
 JWT_ISSUER="df-aima-auth-server"
 RABBITMQ_URL=amqp://guest:guest@localhost:5672/
+RABBITMQ_URL=***

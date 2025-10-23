@@ -42,8 +42,6 @@ func main() {
 	password, port := os.Getenv("DB_PASSWORD"), os.Getenv("DB_PORT")
 	dbName, dbSSL := os.Getenv("DB_NAME"), os.Getenv("DB_SSL")
 
-	fmt.Println("Port:", portString)
-
 	post, err := postgres.ConnectPostgres(url, password, port, host, dbName, user, dbSSL)
 	if err != nil {
 		panic(err)
@@ -62,10 +60,8 @@ func main() {
 		}
 	}()
 
-	// Wait for RabbitMQ to be ready
 	<-rabbit.NotifyReady()
 
-	// Start consumer
 	consumeEmail := rabbitmq.NewConsumer(rabbit, "notification_email_queue", "email-worker", handleEmailDeliveryAck)
 
 	wg.Add(1)
@@ -76,8 +72,8 @@ func main() {
 
 	auth := &AuthHandler{DB: post, RabbMQ: rabbit}
 	router := httprouter.New()
-	router.POST("/auth/register", auth.Register)
-	router.POST("/auth/login", auth.Login)
+	router.POST("/register", VerifyGatewayRequest(auth.Register))
+	router.POST("/login", VerifyGatewayRequest(auth.Register))
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", portInt),

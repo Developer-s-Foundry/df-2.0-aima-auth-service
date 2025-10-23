@@ -104,9 +104,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 				"status": http.StatusText(http.StatusBadRequest),
 			}
 			writeToJson(w, respErr, http.StatusBadRequest)
-			return
+		} else {
+			http.Error(w, "An internal server error occurred", http.StatusInternalServerError)
 		}
-		http.Error(w, "An internal server error occurred", http.StatusInternalServerError)
 		return
 	}
 

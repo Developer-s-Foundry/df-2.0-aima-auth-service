@@ -101,3 +101,13 @@ func readFromJson(r *http.Request, receiver interface{}) error {
 func generateUuid() string {
 	return uuid.NewString()
 }
+
+type ErrorResponse struct {
+	Message string `json:"message"`
+}
+
+func writeJSONError(w http.ResponseWriter, statusCode int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(ErrorResponse{Message: message})
+}
