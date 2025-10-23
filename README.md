@@ -5,6 +5,8 @@ The **AIMA Auth Service** is a Go-based microservice designed to handle user reg
 To access a deployed version of this app on Render, visit: [here](https://df-2-0-aima-auth-service.onrender.com)
 To access the app through the API Gateway of the AIMAS project, use: [here](https://unlikely-cathrin-ubermensch-c0536783.koyeb.app/auth)
 
+Postman Documenatation Link: [here](https://stedankyi-2600741.postman.co/workspace/Stephen-Dankyi's-Workspace~5c2271b9-1432-4047-8b75-4def001ab6c5/collection/48510229-25817200-23d9-44e4-a75e-60d8b0457278?action=share&source=copy-link&creator=48510229)
+
 -----
 
 ## 🚀 Getting Started
