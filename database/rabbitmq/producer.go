@@ -10,6 +10,59 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+func (p *RabbitMQ) DeclareExchangesAndQueues() error {
+	ch := p.Channel()
+	if ch == nil {
+		return fmt.Errorf("RabbitMQ channel not ready")
+	}
+
+	exchanges := []string{"notification_exchange", "user_exchange"}
+	for _, name := range exchanges {
+		if err := ch.ExchangeDeclare(
+			name,
+			"topic",
+			true,
+			false,
+			false,
+			false,
+			nil,
+		); err != nil {
+			return fmt.Errorf("failed to declare exchange %s: %w", name, err)
+		}
+	}
+
+	queues := map[string]string{
+		"notification.queue": "notification_exchange",
+		"user.queue":         "user_exchange",
+	}
+
+	for queueName, exchangeName := range queues {
+		_, err := ch.QueueDeclare(
+			queueName,
+			true,
+			false,
+			false,
+			false,
+			nil,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to declare queue %s: %w", queueName, err)
+		}
+
+		if err := ch.QueueBind(
+			queueName,
+			queueName,
+			exchangeName,
+			false,
+			nil,
+		); err != nil {
+			return fmt.Errorf("failed to bind queue %s to exchange %s: %w", queueName, exchangeName, err)
+		}
+	}
+
+	return nil
+}
+
 func (p *RabbitMQ) Publish(exchange, routingKey string, data interface{}) error {
 	ch := p.Channel()
 	if ch == nil {

@@ -61,6 +61,9 @@ func main() {
 	}()
 
 	<-rabbit.NotifyReady()
+	if err := rabbit.DeclareExchangesAndQueues(); err != nil {
+		log.Fatal(err)
+	}
 
 	consumeEmail := rabbitmq.NewConsumer(rabbit, "notification_email_queue", "email-worker", handleEmailDeliveryAck)
 
