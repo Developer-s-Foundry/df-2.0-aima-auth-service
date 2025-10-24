@@ -32,8 +32,8 @@ func (p *RabbitMQ) DeclareExchangesAndQueues() error {
 	}
 
 	queues := map[string]string{
-		"notification.queue": "notification_exchange",
-		"user.queue":         "user_exchange",
+		"notification.queue123": "notification_exchange123",
+		"user.queue123":         "user_exchange123",
 	}
 
 	for queueName, exchangeName := range queues {
@@ -105,9 +105,9 @@ func (p *RabbitMQ) Publish(exchange, routingKey string, data interface{}) error 
 }
 
 func (p *RabbitMQ) PublishNotification(data interface{}) error {
-	return p.Publish("notification_exchange", "notification.queue", data)
+	return p.Publish("notification_exchange123", "notification123.queue", data)
 }
 
 func (p *RabbitMQ) PublishUserManagement(data interface{}) error {
-	return p.Publish("user_exchange", "user.queue", data)
+	return p.Publish("user_exchange123", "user123.queue", data)
 }

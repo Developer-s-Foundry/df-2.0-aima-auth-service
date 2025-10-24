@@ -78,7 +78,7 @@ func (c *Consumer) consume(ctx context.Context) {
 
 			if err := c.handler(msg); err != nil {
 				log.Printf("[Consumer:%s] Handler error: %v — NACK message", c.consumerID, err)
-				_ = msg.Nack(false, true) // requeue
+				_ = msg.Nack(false, true) 
 				continue
 			}
 
