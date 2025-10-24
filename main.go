@@ -50,7 +50,7 @@ func main() {
 	rabbit := rabbitmq.NewRabbitMQ(rConnStr)
 
 	var wg sync.WaitGroup
-	ctx, cancel := context.WithCancel(context.Background())
+	// ctx, cancel := context.WithCancel(context.Background())
 
 	wg.Add(1)
 	go func() {
@@ -65,13 +65,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	consumeEmail := rabbitmq.NewConsumer(rabbit, "notification_email_queue", "email-worker", handleEmailDeliveryAck)
+	// consumeEmail := rabbitmq.NewConsumer(rabbit, "notification_email_queue", "email-worker", handleEmailDeliveryAck)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		consumeEmail.Start(ctx)
-	}()
+	// wg.Add(1)
+	// go func() {
+	// 	defer wg.Done()
+	// 	consumeEmail.Start(ctx)
+	// }()
 
 	auth := &AuthHandler{DB: post, RabbMQ: rabbit}
 	router := httprouter.New()
@@ -100,7 +100,7 @@ func main() {
 	<-stop
 	log.Println("[Main] Shutdown signal received")
 
-	cancel()
+	// cancel()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()

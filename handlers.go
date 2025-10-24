@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/postgres"
 	"github.com/Developer-s-Foundry/df-2.0-aima-auth-service/database/rabbitmq"
@@ -55,16 +56,30 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	userData := map[string]string{
-		"type":  rabbitmq.NotifyUserSuccessfulSignUp,
-		"email": usr.Email,
-		"Id":    usr.UserID,
+	userData := map[string]interface{}{
+		"data": map[string]string{
+			"type":      rabbitmq.NotifyUserSuccessfulSignUp,
+			"email":     usr.Email,
+			"id":        usr.UserID,
+			"timestamp": time.Now().String(),
+		},
+		"queue_name":    rabbitmq.NotificationQueue,
+		"exchange_name": rabbitmq.NotificationExchange,
 	}
 
 	// publish to user notification
 	go h.RabbMQ.PublishNotification(userData)
 
-	userData["type"] = rabbitmq.AuthUser
+	userData = map[string]interface{}{
+		"data": map[string]string{
+			"type":      rabbitmq.NotifyUserSuccessfulSignUp,
+			"email":     usr.Email,
+			"id":        usr.UserID,
+			"timestamp": time.Now().String(),
+		},
+		"queue_name":    rabbitmq.UserQueue,
+		"exchange_name": rabbitmq.UserExchange,
+	}
 	go h.RabbMQ.PublishUserManagement(userData)
 
 	response := struct {

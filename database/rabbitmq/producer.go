@@ -10,13 +10,21 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+var (
+	NotificationExchange = "auth.notifications.exchange"
+	UserExchange         = "auth.users.exchange"
+
+	NotificationQueue = "auth.notifications.queue"
+	UserQueue         = "auth.users.queue"
+)
+
 func (p *RabbitMQ) DeclareExchangesAndQueues() error {
 	ch := p.Channel()
 	if ch == nil {
 		return fmt.Errorf("RabbitMQ channel not ready")
 	}
 
-	exchanges := []string{"notification_exchange", "user_exchange"}
+	exchanges := []string{NotificationExchange, UserExchange}
 	for _, name := range exchanges {
 		if err := ch.ExchangeDeclare(
 			name,
@@ -32,8 +40,8 @@ func (p *RabbitMQ) DeclareExchangesAndQueues() error {
 	}
 
 	queues := map[string]string{
-		"notification.queue123": "notification_exchange123",
-		"user.queue123":         "user_exchange123",
+		NotificationQueue: NotificationExchange,
+		UserQueue:         UserExchange,
 	}
 
 	for queueName, exchangeName := range queues {
@@ -105,9 +113,19 @@ func (p *RabbitMQ) Publish(exchange, routingKey string, data interface{}) error 
 }
 
 func (p *RabbitMQ) PublishNotification(data interface{}) error {
-	return p.Publish("notification_exchange123", "notification123.queue", data)
+	err := p.Publish(NotificationExchange, NotificationQueue, data)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return err
 }
 
 func (p *RabbitMQ) PublishUserManagement(data interface{}) error {
-	return p.Publish("user_exchange123", "user123.queue", data)
+	err := p.Publish(UserExchange, UserQueue, data)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	return err
 }
