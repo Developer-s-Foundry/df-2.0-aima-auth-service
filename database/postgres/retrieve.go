@@ -2,32 +2,34 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
 )
 
-func (p *PostgresConn) GetUser(context context.Context, email string) (*User, error) {
+func (p *PostgresConn) GetUser(ctx context.Context, email string) (*User, error) {
 	query := `
 		SELECT userId, email, hashedPassword, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
 
-	t := &User{}
-
-	err := p.Conn.QueryRow(
-		context, query, email,
-	).Scan(&t.UserID,
-		&t.Email,
-		&t.HashedPassword,
-		&t.CreatedAt,
-		&t.UpdatedAt,
+	u := &User{}
+	err := p.Conn.QueryRow(ctx, query, email).Scan(
+		&u.UserID,
+		&u.Email,
+		&u.HashedPassword,
+		&u.CreatedAt,
+		&u.UpdatedAt,
 	)
+
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user with email: %s not found", email)
+		if err == pgx.ErrNoRows {
+			return nil, nil
 		}
+		fmt.Println("=------->")
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
-	return t, nil
+
+	return u, nil
 }

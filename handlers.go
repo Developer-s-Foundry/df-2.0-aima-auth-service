@@ -30,14 +30,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 	existingUser, err := h.DB.GetUser(r.Context(), user.Email)
-	if existingUser != nil {
-		respErr := map[string]string{
-			"error":  "user already exists",
-			"status": http.StatusText(http.StatusConflict),
-		}
-		writeToJson(w, respErr, http.StatusConflict)
-		return
-	} else if err != nil {
+	if err != nil {
 		log.Printf("unable to get user from db: %v", err)
 		respErr := map[string]string{
 			"error":  "internal server error",
@@ -47,7 +40,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	// commit to database after checking if user doesn't already exist
+	if existingUser != nil {
+		respErr := map[string]string{
+			"error":  "user already exists",
+			"status": http.StatusText(http.StatusConflict),
+		}
+		writeToJson(w, respErr, http.StatusConflict)
+		return
+	}
+
 	hashedPassword, _ := hashPassword(user.Password)
 	usr := postgres.User{
 		UserID:         generateUuid(),
