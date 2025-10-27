@@ -27,7 +27,6 @@ func (p *PostgresConn) GetUser(ctx context.Context, email string) (*User, error)
 		if err == pgx.ErrNoRows {
 			return nil, nil
 		}
-		fmt.Println("=------->")
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
 
