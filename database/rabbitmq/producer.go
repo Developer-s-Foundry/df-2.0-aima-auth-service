@@ -115,7 +115,7 @@ func (p *RabbitMQ) Publish(exchange, routingKey string, data interface{}) error 
 func (p *RabbitMQ) PublishNotification(data interface{}) error {
 	err := p.Publish(NotificationExchange, NotificationQueue, data)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	return err
@@ -125,7 +125,7 @@ func (p *RabbitMQ) PublishUserManagement(data interface{}) error {
 	err := p.Publish(UserExchange, UserQueue, data)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	return err
 }
