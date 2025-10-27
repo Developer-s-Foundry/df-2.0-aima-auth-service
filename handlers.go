@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -23,15 +22,29 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 	}
 
 	if err := readFromJson(r, &user); err != nil {
-		writeToJson(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		respErr := map[string]string{
+			"error":  err.Error(),
+			"status": http.StatusText(http.StatusBadRequest),
+		}
+		writeToJson(w, respErr, http.StatusBadRequest)
 		return
 	}
 	existingUser, err := h.DB.GetUser(r.Context(), user.Email)
 	if existingUser != nil {
-		writeToJson(w, "User already exists", http.StatusConflict)
+		respErr := map[string]string{
+			"error":  "user already exists",
+			"status": http.StatusText(http.StatusConflict),
+		}
+		writeToJson(w, respErr, http.StatusConflict)
 		return
-	} else {
+	} else if err != nil {
 		log.Printf("unable to get user from db: %v", err)
+		respErr := map[string]string{
+			"error":  "internal server error",
+			"status": http.StatusText(http.StatusInternalServerError),
+		}
+		writeToJson(w, respErr, http.StatusInternalServerError)
+		return
 	}
 
 	// commit to database after checking if user doesn't already exist
@@ -43,8 +56,12 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 	}
 
 	if err := h.DB.InsertUser(usr); err != nil {
-		fmt.Printf("failed to create user %s: %v", usr.Email, err)
-		writeToJson(w, "Failed to create user", http.StatusInternalServerError)
+		log.Printf("failed to create user %s: %v", usr.Email, err)
+		respErr := map[string]string{
+			"error":  "internal server error",
+			"status": http.StatusText(http.StatusInternalServerError),
+		}
+		writeToJson(w, respErr, http.StatusInternalServerError)
 		return
 	}
 
@@ -52,7 +69,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 
 	if err != nil {
 		log.Printf("error generating jwt token %v", err)
-		writeToJson(w, "internal server error", http.StatusInternalServerError)
+		respErr := map[string]string{
+			"error":  "internal server error",
+			"status": http.StatusText(http.StatusInternalServerError),
+		}
+		writeToJson(w, respErr, http.StatusInternalServerError)
 		return
 	}
 
@@ -80,6 +101,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 		"queue_name":    rabbitmq.UserQueue,
 		"exchange_name": rabbitmq.UserExchange,
 	}
+
+	//publish to user management
 	go h.RabbMQ.PublishUserManagement(userData)
 
 	response := struct {
@@ -120,13 +143,21 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 			}
 			writeToJson(w, respErr, http.StatusBadRequest)
 		} else {
-			http.Error(w, "An internal server error occurred", http.StatusInternalServerError)
+			respErr := map[string]string{
+				"error":  "an internal server error occured",
+				"status": http.StatusText(http.StatusInternalServerError),
+			}
+			writeToJson(w, respErr, http.StatusInternalServerError)
 		}
 		return
 	}
 
 	if !checkPasswordHash(authUser.Password, existingUser.HashedPassword) {
-		http.Error(w, "Invalid login credentials", http.StatusUnauthorized)
+		respErr := map[string]string{
+			"error":  "invalid login credentials",
+			"status": http.StatusText(http.StatusUnauthorized),
+		}
+		writeToJson(w, respErr, http.StatusUnauthorized)
 		return
 	}
 
@@ -134,7 +165,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 
 	if err != nil {
 		log.Printf("Token generation error for user %s: %v", authUser.Email, err)
-		http.Error(w, "Cannot generate token", http.StatusInternalServerError)
+		respErr := map[string]string{
+			"error":  "internal server error",
+			"status": http.StatusText(http.StatusInternalServerError),
+		}
+		writeToJson(w, respErr, http.StatusInternalServerError)
 		return
 	}
 
