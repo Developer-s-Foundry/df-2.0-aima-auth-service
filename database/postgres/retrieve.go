@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
 )
+
+var ErrInvalidUser = errors.New("user do not exists ")
 
 func (p *PostgresConn) GetUser(ctx context.Context, email string) (*User, error) {
 	query := `
@@ -25,10 +28,9 @@ func (p *PostgresConn) GetUser(ctx context.Context, email string) (*User, error)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, nil
+			return nil, ErrInvalidUser
 		}
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
-
 	return u, nil
 }

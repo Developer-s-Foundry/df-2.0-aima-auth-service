@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -30,7 +29,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 	existingUser, err := h.DB.GetUser(r.Context(), user.Email)
-	if err != nil {
+	if err != nil && !errors.Is(err, postgres.ErrInvalidUser) {
 		log.Printf("unable to get user from db: %v", err)
 		respErr := map[string]string{
 			"error":  "internal server error",
@@ -137,7 +136,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request, _ httprouter
 
 	if err != nil {
 		log.Printf("DB error for user %s: %v", authUser.Email, err)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, postgres.ErrInvalidUser) {
 			respErr := map[string]string{
 				"error":  "email or password does not exists",
 				"status": http.StatusText(http.StatusBadRequest),
